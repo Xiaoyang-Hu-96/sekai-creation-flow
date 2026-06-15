@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sekai · Creation Flow Redesign</title>
+<style>
+  :root{
+    --bg:#000; --card:#121214; --card2:#1a1a1e; --card3:#26262b;
+    --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
+    --text:#fafafa; --dim:#98989f; --faint:#5c5c63;
+    --teal:#2fd9c7; --teal-bg:rgba(20,68,63,.55); --cyan:#00d5e8;
+    --ok:#4ade80; --warn:#ffb02e;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,Roboto,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:radial-gradient(120% 90% at 50% 0%, #fbfbfc 0%, #eef0f3 55%, #e4e7ec 100%);
+    font-family:var(--sans); color:#1c1c1e; min-height:100vh; padding:0; overflow:auto}
+  /* the stage centers the rail+device; it itself is scaled to fit viewport height */
+  .device-stage{min-height:100vh; display:flex; align-items:center; justify-content:center; gap:40px;}
+  /* device shrinks via zoom so the 874px-tall phone always fits with margin */
+  .device{zoom:min(1, calc((100vh - 60px) / 874));}
+  @media (max-width:980px){
+    .device-stage{min-height:0; gap:0}
+    .device{zoom:1}
+  }
+
+  /* ---------- demo rail ---------- */
+  .rail{width:240px; font-size:13px; color:#6b6b73; line-height:1.5}
+  .rail h1{font-size:16px; color:#1c1c1e; font-weight:800; letter-spacing:-.015em; margin-bottom:4px}
+  .rail .sub{font-size:12px; color:#9a9aa2; margin-bottom:22px}
+  .rail ol{list-style:none; display:flex; flex-direction:column; gap:2px}
+  .rail li{padding:9px 11px; border-radius:11px; cursor:pointer; display:flex; gap:10px; align-items:baseline; transition:background .15s; color:#55555c}
+  .rail li:hover{background:rgba(0,0,0,.04)}
+  .rail li.on{background:rgba(14,125,121,.1); color:#1c1c1e}
+  .rail li .n{font-family:var(--mono); font-size:11px; color:#b0b0b6; width:14px; flex:none}
+  .rail li.on .n{color:var(--accent-deep)}
+  @media (max-width:980px){ .rail{display:none} body{padding:0; background:#000} }
+
+  /* ---------- iPhone 16 Pro shell ---------- */
+  /* outer titanium rail */
+  .device{position:relative; flex:none;
+    width:404px; height:874px; border-radius:62px; padding:5px;
+    background:
+      linear-gradient(135deg,#e7e8ea 0%,#8d9095 8%,#5b5e63 16%,#3a3d41 24%,#6c6f74 38%,#33363a 50%,#6c6f74 62%,#3a3d41 76%,#82858a 88%,#dcdde0 100%);
+    box-shadow:
+      inset 0 0 2px 1px rgba(255,255,255,.35),
+      0 1px 2px rgba(0,0,0,.6),
+      0 60px 100px -25px rgba(20,24,40,.5),
+      0 22px 50px -12px rgba(0,0,0,.35);}
+  /* inner black gasket between rail and glass */
+  .device::before{content:""; position:absolute; inset:5px; border-radius:57px; background:#050506; z-index:0;
+    box-shadow:inset 0 0 3px 1px rgba(0,0,0,.9)}
+  /* subtle diagonal sheen sweeping across the metal */
+  .device::after{content:""; position:absolute; inset:0; border-radius:62px; z-index:3; pointer-events:none;
+    background:linear-gradient(115deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 14%, rgba(255,255,255,0) 86%, rgba(255,255,255,.32) 100%);
+    mix-blend-mode:screen}
+  /* titanium side buttons */
+  .device .btn-vol,.device .btn-pwr{position:absolute; background:linear-gradient(90deg,#46494d,#6f7479 35%,#4a4d51); box-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .device .btn-vol{left:-2.5px; width:3.5px; border-radius:2px 0 0 2px}
+  .device .btn-vol.va{top:150px; height:30px}      /* action button */
+  .device .btn-vol.v2{top:200px; height:58px}        /* volume up */
+  .device .btn-vol.v3{top:274px; height:58px}        /* volume down */
+  .device .btn-pwr{right:-2.5px; top:240px; width:3.5px; height:92px; border-radius:0 2px 2px 0}
+  /* the glass */
+  .phone{position:relative; z-index:2; width:394px; height:864px; background:#000; border-radius:50px;
+    overflow:hidden; flex:none; box-shadow:inset 0 0 0 2px #000}
+  @media (max-width:980px){
+    .device{width:100%; height:100vh; height:100dvh; border-radius:0; padding:0; box-shadow:none; background:#000}
+    .device::before,.device::after{display:none} .device .btn-vol,.device .btn-pwr{display:none}
+    .phone{width:100%; height:100%; border-radius:0}
+  }
+  .statusbar{position:absolute; top:0; left:0; right:0; height:56px; z-index:80; display:flex; align-items:center;
+    justify-content:space-between; padding:17px 36px 0; font-size:16px; font-weight:600; pointer-events:none}
+  .island{position:absolute; top:13px; left:50%; transform:translateX(-50%); width:126px; height:37px; background:#000; border-radius:21px; z-index:81;
+    box-shadow:0 0 0 .5px rgba(40,40,44,.6)}
+  .island::after{content:""; position:absolute; right:11px; top:50%; transform:translateY(-50%); width:9px; height:9px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #1c2530, #060709 70%); box-shadow:inset 0 0 1px rgba(80,120,160,.5)}
+  .home-ind{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:134px; height:5px; border-radius:3px; background:rgba(255,255,255,.85); z-index:85; pointer-events:none}
+  .sb-right{display:flex; gap:7px; align-items:center; font-size:13px}
+  .batt{width:26px; height:13px; border:1px solid rgba(255,255,255,.45); border-radius:4px; position:relative}
+  .batt::after{content:""; position:absolute; inset:1.5px; right:10px; background:var(--text); border-radius:1.5px}
+
+  /* ---------- shared ---------- */
+  .screen{position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .25s; overflow:hidden}
+  .screen.on{opacity:1; pointer-events:auto}
+  .cbtn{width:44px; height:44px; border-radius:50%; background:#1c1c20; border:none; color:var(--text);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:17px; flex:none; transition:background .15s; position:relative}
+  .cbtn:hover{background:#26262b}
+  .cbtn.white{background:#fff; color:#000}
+  .cbtn:disabled{opacity:.35; cursor:default}
+  .cbtn .nub{position:absolute; top:2px; right:2px; width:9px; height:9px; border-radius:50%; background:var(--ok); border:2px solid #000; display:none}
+  .cbtn.checked .nub{display:block}
+  button{font-family:var(--sans)}
+  .btn{border:none; cursor:pointer; font-weight:600; font-size:15.5px; border-radius:999px; padding:14px 22px; transition:transform .12s, opacity .15s}
+  .btn:active{transform:scale(.97)}
+  .btn-white{background:#fff; color:#000; font-weight:700}
+  .btn-ghost{background:transparent; color:var(--dim); border:1px solid var(--line2)}
+  .btn-teal{background:var(--teal-bg); color:var(--teal); border:1px solid rgba(47,217,199,.35); font-weight:700}
+
+  /* ================= CREATE ================= */
+  #s-create .top{padding:64px 20px 14px; display:flex; align-items:center}
+  #s-create .top .back{position:absolute; left:20px}
+  #s-create .top .title{flex:1; text-align:center; font-size:19px; font-weight:700; letter-spacing:-.01em}
+  #s-create .body{flex:1; padding:4px 18px 28px; display:flex; flex-direction:column; gap:0; overflow-y:auto}
+  #s-create .body > *{flex:none}
+  .composer{background:#101013; border:1px solid var(--line); border-radius:26px; padding:18px 16px 13px; display:flex; flex-direction:column; flex:none}
+  .composer textarea{background:none; border:none; outline:none; resize:none; color:var(--text);
+    font-family:var(--sans); font-size:21px; line-height:1.42; letter-spacing:-.01em; min-height:128px}
+  .attach{width:40px; height:40px; border-radius:50%; border:none; background:#1c1c20; color:#cfcfd4; font-size:17px; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; transition:background .15s}
+  .attach:hover{background:#26262b}
+  .fbtn{width:40px; height:40px; border-radius:50%; border:none; background:#1c1c20; color:#cfcfd4; font-size:17px; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; position:relative; transition:background .15s}
+  .fbtn:hover{background:#26262b; color:#fff}
+  .fbtn.pw{color:var(--teal)}
+  .fbtn .pb{position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; border-radius:8px; background:var(--teal); color:#04302e;
+    font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 4px; border:2px solid #101013}
+  .ideas-band{display:none; gap:7px; align-items:center; overflow-x:auto; scrollbar-width:none; padding:8px 0 2px; margin-top:6px; border-top:1px solid var(--line)}
+  .ideas-band.on{display:flex}
+  .ideas-band::-webkit-scrollbar{display:none}
+  .ideas-band .ib-lbl{flex:none; font-size:14px; padding-left:2px; filter:grayscale(1) brightness(1.7)}
+  .ib-chip{flex:none; font-size:12.5px; color:#cfcfd4; background:#23232a; border:1px solid var(--line2); border-radius:999px; padding:8px 13px; cursor:pointer; white-space:nowrap}
+  .ib-chip:hover{color:#fff; border-color:var(--teal)}
+  .composer textarea::placeholder{color:#4b4b52}
+  .attach-chips{display:flex; flex-wrap:wrap; gap:7px; padding:8px 0 4px}
+  .achip{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--teal);
+    background:rgba(20,68,63,.35); border:1px solid rgba(47,217,199,.22); border-radius:9px; padding:5px 9px; opacity:.92}
+  .achip .x{color:rgba(47,217,199,.7); cursor:pointer; font-size:12px; padding:0 1px}
+  .composer-foot{display:flex; align-items:center; gap:10px; padding-top:10px}
+  .effort-chip{display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600; color:var(--dim);
+    background:#1a1a1e; border:1px solid var(--line2); border-radius:999px; padding:9px 14px; cursor:pointer; transition:all .15s}
+  .effort-chip:hover{color:var(--text)}
+  .effort-chip .ev{color:var(--text)}
+  .effort-chip .es{font-size:11.5px; color:var(--faint); font-weight:500; white-space:nowrap}
+  .effort-chip{white-space:nowrap}
+  .mic{margin-left:auto; width:42px; height:42px; border-radius:50%; border:none; background:transparent; color:var(--dim); font-size:20px; cursor:pointer}
+  .send{width:46px; height:46px; min-width:46px; min-height:46px; aspect-ratio:1; flex:none; border-radius:50%; border:none; background:#fff; color:#000; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .12s}
+  .send:active{transform:scale(.93)}
+  .effort-hint{font-size:12px; color:var(--faint); padding:8px 8px 0; line-height:1.5}
+  .effort-hint b{color:var(--dim); font-weight:600}
+
+  .toolrow{display:flex; gap:22px; padding:15px 8px 2px; overflow-x:auto; scrollbar-width:none; flex:none; align-items:center}
+  .toolrow::-webkit-scrollbar{display:none}
+  .tool{display:flex; align-items:center; gap:8px; background:none; border:none; color:#cfcfd4; font-size:15px; font-weight:500; cursor:pointer; flex:none; padding:6px 0}
+  .tool .ti{font-size:17px; filter:grayscale(1) brightness(1.75)}
+  .tool:hover{color:#fff}
+  .tool .tb{font-size:10px; font-weight:800; color:#000; background:var(--teal); border-radius:999px; padding:2px 6px; margin-left:-2px}
+
+  .insp-h{font-size:19px; font-weight:700; letter-spacing:-.01em; padding:20px 6px 12px}
+  .insp{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 2px; position:relative; z-index:0}
+
+  .icard{border-radius:18px; overflow:hidden; position:relative; aspect-ratio:3/3.6; cursor:pointer; border:1px solid var(--line)}
+  .icard .lab{position:absolute; left:12px; bottom:10px; font-size:14px; font-weight:700; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.5)}
+  .icard.a{background:linear-gradient(160deg,#f4f4f8 55%,#d9d2f5 100%)}
+  .icard.a::before{content:"✏️"; position:absolute; top:34%; left:50%; transform:translate(-50%,-50%); font-size:40px}
+  .icard.a .lab{color:#2a2a33; text-shadow:none}
+  .icard.b{background:linear-gradient(150deg,#15263f, #0d1726)}
+  .icard.b::before{content:""; position:absolute; inset:22% 18% 26%; background:
+    conic-gradient(from 0deg, #e0533f 0 25%, #7c3aed 0 50%, #2563eb 0 75%, #6b8f2f 0 100%); border-radius:8px; opacity:.85}
+  .icard.c{background:linear-gradient(170deg,#9bd9f2,#5db4e6)}
+  .icard.c::before{content:"✈️"; position:absolute; top:38%; left:54%; transform:translate(-50%,-50%) rotate(-12deg); font-size:36px}
+  .icard.c .lab{color:#10303f; text-shadow:none}
+  .icard.d{background:linear-gradient(160deg,#3b1c5e,#7a2f86)}
+  .icard.d::before{content:"⭐"; position:absolute; top:36%; left:50%; transform:translate(-50%,-50%); font-size:34px}
+
+  /* ================= PLAN ================= */
+  #s-plan .top{padding:64px 20px 10px; display:flex; align-items:center; gap:10px}
+  #s-plan .body{flex:1; padding:2px 18px 26px; display:flex; flex-direction:column; overflow-y:auto}
+  .plan-eyebrow{font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); margin:8px 4px 8px}
+  .plan-title{font-size:24px; font-weight:800; letter-spacing:-.02em; line-height:1.2; padding:0 4px}
+  .plan-sub{font-size:13.5px; color:var(--dim); line-height:1.55; padding:8px 4px 16px}
+  .plan-sub b{color:var(--text); font-weight:600}
+  .plan-card{background:var(--card); border:1px solid var(--line); border-radius:22px; overflow:hidden}
+  .plan-row{display:flex; align-items:center; gap:12px; padding:16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s}
+  .plan-row:last-of-type{border-bottom:none}
+  .plan-row:hover{background:rgba(255,255,255,.025)}
+  .plan-row .k{font-size:13px; color:var(--dim); width:84px; flex:none}
+  .plan-row .v{font-size:15px; font-weight:600; flex:1; line-height:1.35}
+  .plan-row .chev{color:var(--faint); font-size:14px}
+  .plan-excl{padding:13px 16px; font-size:12.5px; color:var(--faint); line-height:1.55; background:rgba(255,255,255,.02); border-top:1px solid var(--line)}
+  .plan-excl b{color:var(--dim); font-weight:600}
+  .plan-actions{margin-top:auto; padding-top:18px; display:flex; flex-direction:column; gap:10px}
+  .cost-tag{font-size:12.5px; font-weight:500; opacity:.55; margin-left:7px}
+
+  /* ================= CANVAS ================= */
+  .ctop{padding:60px 14px 6px; display:flex; align-items:center; gap:10px; flex:none}
+  .title-pill{flex:1; display:flex; align-items:center; justify-content:center; gap:8px; height:44px;
+    background:#1c1c20; border-radius:999px; font-size:15px; font-weight:600; color:var(--text); border:none; cursor:default}
+  .title-pill .st{color:var(--teal); font-size:13px}
+
+  .cardwrap{flex:1; min-height:0; padding:2px 12px 4px}
+  .game-card{position:relative; height:100%; border-radius:26px; overflow:hidden;
+    background:linear-gradient(180deg,#8fd5ef 0%, #aee2f5 58%, #79c74f 58.2%, #5fae3c 100%)}
+  .hud{position:absolute; top:18px; left:0; right:0; display:flex; justify-content:center; gap:10px; z-index:5}
+  .hud .h{font-family:var(--mono); font-size:13px; font-weight:700; color:#173a52; background:rgba(255,255,255,.75); border-radius:999px; padding:7px 14px; backdrop-filter:blur(4px)}
+  .hud .h.alert{color:#a33; display:none}
+  .llama{position:absolute; font-size:58px; cursor:pointer; user-select:none; transition:left .9s cubic-bezier(.3,.6,.3,1), top .9s cubic-bezier(.3,.6,.3,1), transform .15s; z-index:4; filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
+  .llama:active{transform:scale(.85)}
+  .cloud{position:absolute; font-size:40px; opacity:.9; z-index:1}
+  .tap-fx{position:absolute; font-size:15px; font-weight:800; color:#173a52; z-index:6; pointer-events:none; animation:rise .7s forwards}
+  @keyframes rise{to{transform:translateY(-34px); opacity:0}}
+
+  /* building overlay */
+  .buildlay{position:absolute; inset:0; background:#000; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; transition:opacity .5s}
+  .buildlay.off{opacity:0; pointer-events:none}
+  .spark{font-size:84px; color:#fff; animation:breathe 2.2s ease-in-out infinite; line-height:1}
+  @keyframes breathe{0%,100%{transform:scale(1) rotate(0deg); opacity:1}50%{transform:scale(.86) rotate(18deg); opacity:.75}}
+  .build-cap{font-size:14px; color:var(--dim); margin-top:26px; transition:opacity .3s}
+  .feed-btn{margin-top:42px; width:78%; max-width:330px; padding:16px 0; border-radius:999px; border:1px solid var(--line2);
+    background:#17171b; color:#fff; font-size:16.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px}
+  .feed-btn:active{transform:scale(.98)}
+  .build-sub{font-size:13px; color:#6b7fa8; margin-top:16px}
+
+
+  /* ================= STATUS PILL ================= */
+  .dockzone{flex:none; padding:8px 16px calc(16px + env(safe-area-inset-bottom)); z-index:40}
+  .dock{width:100%; display:flex; gap:6px; align-items:center}
+  .dock.solo .dock-tools{display:none}
+  .dock.solo .pill{flex:1}
+  .pill{backdrop-filter:blur(22px); border:1.5px solid transparent; border-radius:30px; overflow:hidden; cursor:pointer;
+    background:linear-gradient(rgba(16,16,19,.95), rgba(16,16,19,.95)) padding-box,
+               linear-gradient(130deg, rgba(47,217,199,.9), rgba(124,92,255,.85) 60%, rgba(47,217,199,.5)) border-box;
+    box-shadow:0 14px 44px rgba(0,0,0,.6), 0 0 22px rgba(47,217,199,.16);
+    width:auto; max-width:100%; flex:none; transition:flex .3s; animation:aiglow 3.2s ease-in-out infinite}
+  @keyframes aiglow{0%,100%{box-shadow:0 14px 44px rgba(0,0,0,.6), 0 0 16px rgba(47,217,199,.14)}
+    50%{box-shadow:0 14px 44px rgba(0,0,0,.6), 0 0 26px rgba(124,92,255,.28)}}
+  .pill.compact .pill-t2{display:none}
+  .pill.compact .pill-stages,.pill.compact .pill-bar{display:none}
+  .pill.compact .pill-main{white-space:nowrap}
+  .pill.compact .pill-main{padding:10px 15px 10px 11px; gap:9px}
+  .pill.compact .pill-ico{width:30px; height:30px; font-size:14px}
+  .pill.compact .pill-t1{font-size:13.5px; white-space:nowrap;
+    background:linear-gradient(90deg,#eafffc,#d9ccff); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .dock-tools{flex:1; min-width:0; display:flex; gap:7px; overflow-x:auto; align-items:center; scrollbar-width:none; padding:6px 2px}
+  .dock-tools::-webkit-scrollbar{display:none}
+  .dchip{flex:none; height:46px; padding:0 14px; border-radius:23px; background:rgba(18,18,21,.94); backdrop-filter:blur(22px);
+    border:1px solid var(--line2); color:#cfcfd4; font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px;
+    position:relative; cursor:pointer; box-shadow:0 14px 44px rgba(0,0,0,.5); transition:color .15s}
+  .dchip:hover{color:#fff}
+  .dchip .bdg{position:absolute; top:-3px; right:-2px; min-width:17px; height:17px; border-radius:9px; background:var(--warn); color:#000;
+    font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center; padding:0 4px; border:2px solid #000}
+  .dchip.has .bdg{display:flex}
+  .dtool{flex:none; display:flex; flex-direction:column; align-items:center; gap:5px; background:none; border:none;
+    color:#fff; font-size:12px; font-weight:500; cursor:pointer; position:relative; padding:3px 7px; min-width:56px}
+  .dtool .di{font-size:21px; line-height:1; filter:grayscale(1) brightness(1.75)}
+  .dtool .bdg{position:absolute; top:-3px; right:8px; min-width:17px; height:17px; border-radius:9px; background:#fa3e3e; color:#fff;
+    font-size:10px; font-weight:800; display:none; align-items:center; justify-content:center; padding:0 4px; border:2px solid #000}
+  .dtool.has .bdg{display:flex}
+  .asset-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .acard{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:var(--card)}
+  .acard .thumb{aspect-ratio:1/.78; display:flex; align-items:center; justify-content:center; font-size:42px}
+  .acard .thumb.t1{background:linear-gradient(170deg,#8fd5ef,#79c74f)}
+  .acard .thumb.t2{background:linear-gradient(160deg,#aee2f5 60%,#8fd5ef)}
+  .acard .am{padding:10px 12px}
+  .acard .an{font-size:13px; font-weight:600}
+  .acard .as{font-size:11.5px; color:var(--faint); margin-top:2px}
+  .acard .ab{display:flex; gap:6px; padding:0 12px 12px}
+  .acard .ab .btn{flex:1; padding:8px 0; font-size:12px}
+  .mrow{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px}
+  .mrow .play{width:38px; height:38px; border-radius:50%; background:#222227; border:1px solid var(--line2); color:#fff; font-size:13px; cursor:pointer; flex:none}
+  .mrow .mk{flex:1}
+  .mrow .m1{font-size:14px; font-weight:600}
+  .mrow .m2{font-size:12px; color:var(--faint); margin-top:2px}
+  .attach-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+  .agbtn{display:flex; flex-direction:column; gap:7px; align-items:center; padding:13px 0; background:var(--card);
+    border:1px solid var(--line); border-radius:14px; color:#cfcfd4; font-size:11.5px; font-weight:500; cursor:pointer}
+  .agbtn .gi{font-size:20px; filter:grayscale(1) brightness(1.75)}
+  .agbtn:hover{color:#fff}
+  .pill-main{display:flex; align-items:center; gap:12px; padding:13px 16px}
+  .pill-ico{width:36px; height:36px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px;
+    background:linear-gradient(135deg,#2fd9c7,#7c5cff); position:relative; color:#fff;
+    text-shadow:0 1px 6px rgba(0,0,0,.35); animation:starbreathe 2.6s ease-in-out infinite}
+  @keyframes starbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  .pill-ico.spin::after{content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid transparent; border-top-color:var(--cyan); animation:rot 1s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .pill-txt{flex:1; min-width:0}
+  .pill-t1{font-size:14.5px; font-weight:600; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .pill-t2{font-size:12px; color:var(--dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .pill-t2 b{color:var(--cyan); font-weight:600}
+  .pill-act{flex:none; font-size:12.5px; font-weight:700; color:var(--teal); background:var(--teal-bg); border:1px solid rgba(47,217,199,.3); padding:7px 13px; border-radius:999px; cursor:pointer}
+  .pill-chev{flex:none; color:var(--faint); font-size:13px; transition:transform .25s}
+  .pill.expanded .pill-chev{transform:rotate(180deg)}
+  .pill-stages{max-height:0; overflow:hidden; transition:max-height .35s ease}
+  .pill.expanded .pill-stages{max-height:300px}
+  .stage{display:flex; align-items:center; gap:11px; padding:11px 18px; font-size:13.5px; color:var(--faint); border-top:1px solid var(--line)}
+  .stage .si{width:18px; height:18px; flex:none; border-radius:50%; border:1.5px solid var(--faint); display:flex; align-items:center; justify-content:center; font-size:10px}
+  .stage.done{color:var(--dim)}
+  .stage.done .si{border-color:var(--ok); background:rgba(74,222,128,.12); color:var(--ok)}
+  .stage.now{color:var(--text)}
+  .stage.now .si{border-color:var(--cyan); color:var(--cyan); animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,213,232,.3)}50%{box-shadow:0 0 0 5px rgba(0,213,232,0)}}
+  .stage .review{margin-left:auto; font-size:12px; font-weight:700; color:var(--teal); cursor:pointer; padding:4px 9px; border-radius:8px}
+  .stage .review:hover{background:var(--teal-bg)}
+  .pill-bar{height:3.5px; background:#222228; position:relative; display:none}
+  .pill-bar i{position:absolute; inset:0; right:auto; width:0%; background:var(--cyan); transition:width .6s ease}
+  .pill-bar .pct{position:absolute; right:10px; top:-22px; font-family:var(--mono); font-size:11px; font-weight:700; color:var(--cyan)}
+  .pill.building .pill-bar{display:block}
+
+  /* ================= SHEETS ================= */
+  .scrim{position:absolute; inset:0; background:rgba(0,0,0,.6); opacity:0; pointer-events:none; transition:opacity .3s; z-index:45}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .sheet{position:absolute; left:0; right:0; bottom:0; z-index:50; background:#101013; border-radius:30px 30px 0 0;
+    border-top:1px solid var(--line2); transform:translateY(104%); transition:transform .38s cubic-bezier(.32,.72,.25,1);
+    max-height:78%; display:flex; flex-direction:column; box-shadow:0 -20px 60px rgba(0,0,0,.65)}
+  .sheet.on{transform:translateY(0)}
+  .grab{width:40px; height:5px; border-radius:3px; background:#2e2e34; margin:10px auto 4px; flex:none}
+  .sheet-head{padding:8px 20px 12px; display:flex; align-items:center; gap:12px; flex:none}
+  .sheet-head .st{font-size:17px; font-weight:700; letter-spacing:-.01em}
+  .sheet-head .sx{margin-left:auto}
+  .sheet-body{overflow-y:auto; padding:0 20px 22px; display:flex; flex-direction:column; gap:12px}
+  .xbtn{width:34px; height:34px; border-radius:50%; background:#1c1c20; border:none; color:var(--dim); font-size:13px; cursor:pointer}
+
+  /* chat */
+  .seg{display:flex; background:#1c1c20; border-radius:999px; padding:3px; border:1px solid var(--line)}
+  .seg button{border:none; background:none; color:var(--dim); font-size:12.5px; font-weight:600; padding:6px 13px; border-radius:999px; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all .18s}
+  .seg button.on{background:#fff; color:#000}
+  .mode-tip{font-size:11.5px; color:var(--faint); padding:0 20px 10px; flex:none}
+  .mode-tip b{color:var(--dim)}
+  .chat-log{display:flex; flex-direction:column; gap:15px; padding-bottom:6px}
+  .msg{max-width:88%; font-size:15px; line-height:1.5}
+  .msg.user{align-self:flex-end; background:#26262b; padding:12px 16px; border-radius:20px 20px 6px 20px}
+  .msg.ai{align-self:flex-start}
+  .msg.ai .who{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--text); margin-bottom:7px}
+  .msg.ai .who .av{width:24px; height:24px; border-radius:50%; background:#222227; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; border:1px solid var(--line2)}
+  .plan-mini{border:1px solid var(--line2); border-radius:18px; overflow:hidden; margin-top:9px; background:#1d1d22}
+  .pm-sec{padding:12px 14px; border-bottom:1px solid var(--line)}
+  .pm-k{font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; margin-bottom:7px}
+  .pm-k.ch{color:var(--teal)} .pm-k.no{color:var(--faint)}
+  .pm-i{font-size:13.5px; color:var(--text); padding:3px 0; display:flex; gap:8px; align-items:baseline}
+  .pm-i::before{content:"·"; color:var(--faint)}
+  .pm-i.keep{color:var(--dim)}
+  .pm-foot{display:flex; gap:8px; padding:12px 14px; background:rgba(255,255,255,.02)}
+  .pm-foot .btn{padding:11px 14px; font-size:13.5px; flex:1}
+  .spec-row{display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s}
+  .spec-row:hover{background:rgba(255,255,255,.03)}
+  .spec-row .k{font-size:12px; color:#b6b6bd; width:78px; flex:none}
+  .spec-row .v{font-size:13.5px; font-weight:600; flex:1; line-height:1.35; color:#ffffff}
+  .spec-row .chev{color:var(--faint); font-size:12px}
+  .spec-excl{padding:11px 14px; font-size:12px; color:#9a9aa2; line-height:1.5; border-bottom:1px solid var(--line)}
+  .spec-excl b{color:#dededf; font-weight:600}
+  .chat-note{font-size:12.5px; color:var(--faint); padding:6px 0; line-height:1.5}
+  .suggest-row{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; flex:none; padding:2px 20px 10px}
+  .suggest-row::-webkit-scrollbar{display:none}
+  .sug{flex:none; font-size:13px; color:var(--dim); border:1px solid var(--line2); background:var(--card); border-radius:999px; padding:9px 14px; cursor:pointer; transition:all .15s}
+  .sug:hover{color:var(--text); border-color:var(--teal)}
+  .chat-input{display:flex; align-items:center; gap:10px; padding:10px 16px 8px; flex:none}
+  .chat-input input{flex:1; background:#1a1a1e; border:1px solid var(--line); border-radius:999px; padding:14px 18px; color:var(--text); font-size:15px; font-family:var(--sans); outline:none}
+  .chat-input input::placeholder{color:#55555c}
+  .chat-input .send{width:42px; height:42px; min-width:42px; min-height:42px; font-size:16px}
+  .chat-tools{display:flex; gap:24px; padding:8px 22px calc(16px + env(safe-area-inset-bottom)); flex:none}
+  .chat-tools .tool{font-size:14.5px; color:#b9b9c0}
+
+  /* tune sheet */
+  .trow{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:13px 15px}
+  .trow .tk{flex:1}
+  .trow .tk .t1{font-size:14.5px; font-weight:600}
+  .trow .tk .t2{font-size:12px; color:var(--faint); margin-top:2px}
+  .stepper{display:flex; align-items:center; gap:0; background:#1c1c20; border:1px solid var(--line2); border-radius:999px; overflow:hidden}
+  .stepper button{width:34px; height:32px; background:none; border:none; color:var(--dim); font-size:15px; cursor:pointer}
+  .stepper button:hover{color:#fff}
+  .stepper .val{font-family:var(--mono); font-size:13px; font-weight:700; min-width:48px; text-align:center}
+  .qnote{font-size:12.5px; color:var(--faint); text-align:center; line-height:1.55; padding:2px 8px}
+  .qnote b{color:var(--dim)}
+
+  /* playtest sheet */
+  .pt-running{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 30px}
+  .pt-running .spark{font-size:52px}
+  .pt-run-t{font-size:15.5px; font-weight:700}
+  .pt-run-s{font-family:var(--mono); font-size:12.5px; color:var(--cyan)}
+  .pt-mini{width:200px; height:3.5px; background:#222228; border-radius:2px; overflow:hidden}
+  .pt-mini i{display:block; height:100%; width:0%; background:var(--cyan); transition:width .25s}
+  .pt-results{display:none; flex-direction:column; gap:12px}
+  .qa-score{display:flex; align-items:center; gap:16px; padding:4px 2px 2px}
+  .ring{width:64px; height:64px; flex:none; border-radius:50%; background:conic-gradient(var(--ok) 0 84%, #222228 84% 100%); display:flex; align-items:center; justify-content:center; position:relative}
+  .ring::before{content:""; position:absolute; inset:5px; background:#101013; border-radius:50%}
+  .ring b{position:relative; font-size:18px; font-weight:800}
+  .qs-t{font-size:15px; font-weight:700; letter-spacing:-.01em}
+  .qs-s{font-size:12.5px; color:var(--dim); margin-top:3px; line-height:1.45}
+  .qa-eyebrow{font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); padding-top:4px}
+  .qa-item{display:flex; gap:12px; padding:13px 14px; background:var(--card); border:1px solid var(--line); border-radius:16px; align-items:flex-start; opacity:0; transform:translateY(8px); transition:all .35s}
+  .qa-item.in{opacity:1; transform:none}
+  .qa-item .qi{width:22px; height:22px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin-top:1px}
+  .qa-item.ok .qi{background:rgba(74,222,128,.13); color:var(--ok)}
+  .qa-item.warn .qi{background:rgba(255,176,46,.13); color:var(--warn)}
+  .qa-item .qb{flex:1}
+  .qa-item .q1{font-size:14px; font-weight:600; line-height:1.4}
+  .qa-item .q2{font-size:12.5px; color:var(--dim); margin-top:3px; line-height:1.5}
+  .qa-item .fix{flex:none; font-size:12px; font-weight:700; color:var(--warn); background:rgba(255,176,46,.1); border:1px solid rgba(255,176,46,.3); border-radius:999px; padding:6px 12px; cursor:pointer; align-self:center}
+  .qa-actions{display:flex; gap:10px; padding-top:6px}
+  .qa-actions .btn{flex:1; padding:13.5px; font-size:14.5px}
+
+  /* changelog */
+  .changelog{position:absolute; left:13px; right:13px; bottom:104px; z-index:38; background:rgba(16,16,19,.96); backdrop-filter:blur(22px);
+    border:1px solid var(--line2); border-radius:22px; padding:15px 17px; transform:translateY(20px); opacity:0; pointer-events:none;
+    transition:all .35s cubic-bezier(.32,.72,.25,1); box-shadow:0 16px 50px rgba(0,0,0,.6)}
+  .changelog.on{transform:none; opacity:1; pointer-events:auto}
+  .cl-head{display:flex; align-items:center; gap:8px; margin-bottom:9px}
+  .cl-head .ver{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--teal); background:var(--teal-bg); padding:3px 8px; border-radius:7px}
+  .cl-head .ct{font-size:13.5px; font-weight:700}
+  .cl-head .x{margin-left:auto; color:var(--faint); cursor:pointer; font-size:14px; padding:2px 6px}
+  .cl-li{font-size:13px; color:var(--dim); padding:2.5px 0; display:flex; gap:8px}
+  .cl-li::before{content:"✓"; color:var(--ok); font-size:11px; font-weight:800; margin-top:1px}
+  .cl-foot{display:flex; gap:14px; margin-top:10px; font-size:12.5px; font-weight:600}
+  .cl-foot span{color:var(--teal); cursor:pointer}
+  .cl-foot span.mut{color:var(--faint)}
+
+  /* playtest modal */
+  .modal{position:absolute; inset:0; z-index:55; display:flex; align-items:center; justify-content:center; padding:64px 16px calc(20px + env(safe-area-inset-bottom));
+    background:rgba(0,0,0,.62); backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity .28s}
+  .modal.on{opacity:1; pointer-events:auto}
+  .modal-card{width:100%; max-height:100%; display:flex; flex-direction:column; background:#141418; border:1px solid var(--line2);
+    border-radius:24px; box-shadow:0 30px 80px rgba(0,0,0,.7); transform:scale(.94) translateY(10px); transition:transform .3s cubic-bezier(.32,.72,.25,1)}
+  .modal.on .modal-card{transform:none}
+  .modal-card .sheet-head{padding:16px 18px 12px; flex:none}
+  .modal-body{overflow-y:auto; padding:0 18px 18px; display:flex; flex-direction:column; gap:12px}
+  .modal-foot{flex:none; display:flex; gap:10px; padding:14px 18px calc(16px + env(safe-area-inset-bottom)); border-top:1px solid var(--line)}
+  .modal-foot .btn{flex:1; padding:14px; font-size:14.5px}
+
+  /* toast */
+  .toast{position:absolute; top:64px; left:50%; transform:translate(-50%,-12px); z-index:90; background:rgba(18,18,21,.96);
+    border:1px solid var(--line2); backdrop-filter:blur(16px); border-radius:999px; padding:11px 19px; font-size:13.5px; font-weight:600;
+    opacity:0; pointer-events:none; transition:all .3s; display:flex; gap:8px; align-items:center; box-shadow:0 10px 36px rgba(0,0,0,.5); white-space:nowrap; max-width:88%}
+  .toast.on{opacity:1; transform:translate(-50%,0)}
+  .toast .ti{color:var(--ok)}
+</style>
+</head>
+<body>
+
+<div class="device-stage">
+<aside class="rail">
+  <h1>Sekai — creation flow, rethought</h1>
+  <div class="sub">Interactive prototype · tap through on the phone, or jump to a beat</div>
+  <ol id="rail">
+    <li data-go="create" class="on"><span class="n">1</span><span>Create — effort & powers live in the composer</span></li>
+    <li data-go="plan"><span class="n">2</span><span>Spec card — confirmed in chat (Quick skips it)</span></li>
+    <li data-go="build"><span class="n">3</span><span>Build — semantic progress, tune while you wait</span></li>
+    <li data-go="canvas"><span class="n">4</span><span>Canvas-first — chat is a pill, edits are contracts</span></li>
+    <li data-go="qa"><span class="n">5</span><span>Ship — watch the agent playtest it first</span></li>
+  </ol>
+</aside>
+
+<div class="device">
+  <span class="btn-vol va"></span><span class="btn-vol v2"></span><span class="btn-vol v3"></span><span class="btn-pwr"></span>
+  <div class="phone">
+  <div class="island"></div>
+  <div class="home-ind"></div>
+  <div class="statusbar"><span>19:57</span><span class="sb-right">𝗅𝗅 ᯤ <span class="batt"></span></span></div>
+
+  <!-- ============ CREATE ============ -->
+  <section class="screen on" id="s-create">
+    <div class="top">
+      <button class="cbtn back" style="background:none">←</button>
+      <div class="title">Create Sekai</div>
+    </div>
+    <div class="body">
+      <div class="composer" id="composer">
+        <textarea id="idea" spellcheck="false" onfocus="ideasOn()" onblur="ideasOff()">I want to make a chaotic mini-game where I tap as fast as I can to keep a llama from escaping the screen.</textarea>
+        <div class="attach-chips" id="achips">
+          <span class="achip" data-p="sfx">🔊 Arcade SFX <span class="x" onmousedown="removePower(event,'sfx')">✕</span></span>
+        </div>
+        <div class="ideas-band" id="ideasband">
+          <span class="ib-lbl">💡</span>
+          <button class="ib-chip" onmousedown="addIdea(event,this)">…that speeds up every tap</button>
+          <button class="ib-chip" onmousedown="addIdea(event,this)">…where the llama taunts you</button>
+          <button class="ib-chip" onmousedown="addIdea(event,this)">…with a best-streak leaderboard</button>
+        </div>
+        <div class="composer-foot">
+          <button class="fbtn" onclick="openAttach()" title="Attach photo, music or sound">📎</button>
+          <button class="fbtn pw" id="powbtn" onclick="openPowers()" title="Powers">⚡<span class="pb" id="pcount">1</span></button>
+          <button class="effort-chip" id="effortchip" onclick="cycleEffort(event)">
+            <span id="effort-ico">🌀</span> <span class="ev" id="effort-name">Deep</span> <span class="es" id="effort-sub">~4 min</span> <span style="color:var(--faint)">▾</span>
+          </button>
+          <button class="mic">🎙</button>
+          <button class="send" onclick="submitIdea()">↑</button>
+        </div>
+      </div>
+      <div class="effort-hint" id="effort-hint"><b>Deep</b> plans first, then builds richer (~4 min). <b>Quick</b> just builds (~1 min).</div>
+
+      <div class="insp-h">Need inspiration?</div>
+      <div class="insp">
+        <div class="icard a"><span class="lab">Meme Painter AI</span></div>
+        <div class="icard b"><span class="lab">Pixel Hunt Relax</span></div>
+        <div class="icard c"><span class="lab">Paper Plane Dash</span></div>
+        <div class="icard d"><span class="lab">Star Catcher</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CANVAS ============ -->
+  <section class="screen" id="s-canvas">
+    <div class="ctop">
+      <button class="cbtn" onclick="go('create')">←</button>
+      <button class="cbtn" onclick="toast('Every build is a restore point · v1, v2…')">🕐</button>
+      <button class="title-pill"><span class="st">✦</span> <span id="gtitle">Llama Panic!</span> <span style="font-family:var(--mono);font-size:11px;color:var(--faint)" id="gver">v1</span></button>
+      <button class="cbtn" onclick="toast('Regenerate is an edit now — tell Sekai what to change instead')">↻</button>
+      <button class="cbtn white" id="shipbtn" onclick="openQA()" disabled>→<span class="nub"></span></button>
+    </div>
+
+    <div class="cardwrap">
+      <div class="game-card" id="gamecard">
+        <div class="hud">
+          <span class="h" id="hud-score">Taps · 0</span>
+          <span class="h" id="hud-best">Best streak · 0</span>
+          <span class="h" id="hud-timer" style="display:none">⏱ 30s</span>
+        </div>
+        <span class="cloud" style="top:12%; left:10%">☁️</span>
+        <span class="cloud" style="top:7%; right:14%">☁️</span>
+        <span class="cloud" style="top:24%; right:34%; font-size:30px">☁️</span>
+        <div class="llama" id="llama" style="left:45%; top:52%">🦙</div>
+
+        <div class="buildlay" id="buildlay">
+          <div class="spark">✦</div>
+          <div class="build-cap" id="buildcap">Setting the stage…</div>
+          <button class="feed-btn" onclick="toast('Off to the feed — this keeps building, we’ll ping you')">⌂ &nbsp;Explore Feed</button>
+          <div class="build-sub">We'll save it to Drafts and notify you when it's ready</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dockzone">
+      <div class="dock solo" id="dock">
+      <div class="pill" id="pill" onclick="pillTap(event)">
+        <div class="pill-main">
+          <div class="pill-ico" id="pill-ico">✦</div>
+          <div class="pill-txt">
+            <div class="pill-t1" id="pill-t1">Sekai</div>
+            <div class="pill-t2" id="pill-t2">Tap to talk, or tell me what to change</div>
+          </div>
+          <span class="pill-act" id="pill-act" style="display:none" onclick="openTune(event)">Tune now</span>
+          <span class="pill-chev" id="pill-chev" style="display:none">⌃</span>
+        </div>
+        <div class="pill-stages" id="pill-stages">
+          <div class="stage" data-i="0"><span class="si">1</span> Game logic & physics</div>
+          <div class="stage" data-i="1"><span class="si">2</span> Tuning values — speed, ramp, rounds <span class="review" onclick="openTune(event)" style="display:none">Review</span></div>
+          <div class="stage" data-i="2"><span class="si">3</span> Llama art & animation</div>
+          <div class="stage" data-i="3"><span class="si">4</span> Meadow, clouds & sky</div>
+          <div class="stage" data-i="4"><span class="si">5</span> Arcade SFX & haptics</div>
+        </div>
+        <div class="pill-bar"><span class="pct" id="pill-pct">0%</span><i id="pill-bar-i"></i></div>
+      </div>
+      <div class="dock-tools" id="docktools">
+        <button class="dtool" onclick="bugReport()"><span class="di">🐞</span>Bug</button>
+        <button class="dtool" onclick="openTune(event)"><span class="di">🎚</span>Tune</button>
+        <button class="dtool" id="dimg" onclick="openAssets()"><span class="di">🖼</span>Images<span class="bdg">2</span></button>
+        <button class="dtool" id="dmus" onclick="openAssets()"><span class="di">🎵</span>Music<span class="bdg">1</span></button>
+      </div>
+      </div>
+    </div>
+
+    <div class="changelog" id="changelog">
+      <div class="cl-head"><span class="ver" id="clver">v2</span><span class="ct">What changed</span><span class="x" onclick="hideChangelog()">✕</span></div>
+      <div id="cl-list">
+        <div class="cl-li">30-second round timer added</div>
+        <div class="cl-li">Llama speed now ramps every 5 taps</div>
+        <div class="cl-li">Untouched: art, controls, scoring</div>
+      </div>
+      <div class="cl-foot"><span onclick="toast('Restored v1'); hideChangelog()">Revert to v1</span><span class="mut" onclick="hideChangelog()">Looks right</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SHEETS ============ -->
+  <div class="scrim" id="scrim" onclick="closeSheets()"></div>
+
+  <!-- attach -->
+  <div class="sheet" id="sheet-attach">
+    <div class="grab"></div>
+    <div class="sheet-head"><div class="st">Attach to your idea</div><button class="xbtn sx" onclick="closeSheets()">✕</button></div>
+    <div class="sheet-body">
+      <div class="qnote">Bring your own material — a reference image, a track, a sound. Sekai builds around it.</div>
+      <div class="attach-grid">
+        <button class="agbtn" onclick="toast('Pick a photo to attach')"><span class="gi">🖼</span>Photo</button>
+        <button class="agbtn" onclick="toast('Camera opens here')"><span class="gi">📷</span>Camera</button>
+        <button class="agbtn" onclick="toast('Pick a track to attach')"><span class="gi">🎵</span>Music</button>
+        <button class="agbtn" onclick="toast('Pick sounds to attach')"><span class="gi">🔊</span>SFX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- powers / toolbox -->
+  <div class="sheet" id="sheet-powers">
+    <div class="grab"></div>
+    <div class="sheet-head"><div class="st">Powers</div><button class="xbtn sx" onclick="closeSheets()">✕</button></div>
+    <div class="sheet-body">
+      <div class="qnote">Abilities this engine already has. Add one and it attaches to your idea — <b>that's the whole capability menu, no guessing.</b></div>
+      <div class="trow"><div class="tk"><div class="t1">🔊 Arcade SFX</div><div class="t2">Boops, dings and fail-trombones on every tap</div></div><button class="btn btn-teal" style="padding:9px 16px;font-size:13px" data-p="sfx" onclick="togglePower(this)">Added ✓</button></div>
+      <div class="trow"><div class="tk"><div class="t1">⏱ Timer rounds</div><div class="t2">Countdown rounds with a results screen</div></div><button class="btn btn-ghost" style="padding:9px 16px;font-size:13px" data-p="timer" onclick="togglePower(this)">Add</button></div>
+      <div class="trow"><div class="tk"><div class="t1">🏆 Leaderboard</div><div class="t2">Global high scores, updated live</div></div><button class="btn btn-ghost" style="padding:9px 16px;font-size:13px" data-p="board" onclick="togglePower(this)">Add</button></div>
+      <div class="trow"><div class="tk"><div class="t1">🫂 Play with friends</div><div class="t2">Same game, two phones, shared chaos</div></div><button class="btn btn-ghost" style="padding:9px 16px;font-size:13px" data-p="friends" onclick="togglePower(this)">Add</button></div>
+      <div class="trow"><div class="tk"><div class="t1">🎵 Music</div><div class="t2">A looping track that matches the vibe</div></div><button class="btn btn-ghost" style="padding:9px 16px;font-size:13px" data-p="music" onclick="togglePower(this)">Add</button></div>
+    </div>
+  </div>
+
+  <!-- chat -->
+  <div class="sheet" id="sheet-chat">
+    <div class="grab"></div>
+    <div class="sheet-head">
+      <div class="st">Sekai</div>
+      <div class="seg sx" id="modeseg">
+        <button class="on" onclick="setMode(this,'agent')">⚒ Agent</button>
+        <button onclick="setMode(this,'chat')">💬 Chat</button>
+      </div>
+    </div>
+    <div class="mode-tip" id="modetip"><b>Agent:</b> clear instructions get applied — no extra button to press.</div>
+    <div class="sheet-body" id="chatlog-wrap">
+      <div class="chat-log" id="chatlog"></div>
+    </div>
+    <div class="suggest-row" id="suggestrow" style="display:none">
+      <button class="sug" onclick="sendEdit()">Add a 30s timer and make it speed up every 5 taps</button>
+      <button class="sug" onclick="sendChatMsg()">What if there were two llamas?</button>
+    </div>
+    <div class="chat-input">
+      <input id="chatinput" placeholder="Tell Sekai what to change…" onkeydown="if(event.key==='Enter')sendFree()">
+      <button class="send" onclick="sendFree()">↑</button>
+    </div>
+    <div class="chat-tools" style="gap:8px; overflow-x:auto; scrollbar-width:none">
+      <button class="dchip" style="height:40px" onclick="openTune(event)">Tune</button>
+      <button class="dchip" style="height:40px" id="cimg" onclick="openAssets()">Images<span class="bdg">2</span></button>
+      <button class="dchip" style="height:40px" id="cmus" onclick="openAssets()">Music<span class="bdg">1</span></button>
+      <button class="dchip" style="height:40px" onclick="bugReport()">Report bug</button>
+    </div>
+  </div>
+
+  <!-- tune sheet -->
+  <div class="sheet" id="sheet-tune">
+    <div class="grab"></div>
+    <div class="sheet-head"><div class="st">Tune · ready while I build</div><button class="xbtn sx" onclick="closeSheets()">✕</button></div>
+    <div class="sheet-body">
+      <div class="qnote">The logic is locked in — art and sound are still rendering. <b>These numbers are editable right now</b>, no rebuild needed.</div>
+      <div class="trow"><div class="tk"><div class="t1">Llama speed</div><div class="t2">How fast it dashes for the edge</div></div>
+        <div class="stepper"><button onclick="step(this,-1)">−</button><span class="val" data-u="x" data-v="1.4" data-s="0.2">1.4×</span><button onclick="step(this,1)">＋</button></div></div>
+      <div class="trow"><div class="tk"><div class="t1">Speed ramp</div><div class="t2">Gets faster every N taps</div></div>
+        <div class="stepper"><button onclick="step(this,-1)">−</button><span class="val" data-u=" taps" data-v="5" data-s="1">5 taps</span><button onclick="step(this,1)">＋</button></div></div>
+      <div class="trow"><div class="tk"><div class="t1">Escape zones</div><div class="t2">Edges the llama can bolt through</div></div>
+        <div class="stepper"><button onclick="step(this,-1)">−</button><span class="val" data-u="" data-v="4" data-s="1">4</span><button onclick="step(this,1)">＋</button></div></div>
+      <div class="trow"><div class="tk"><div class="t1">Llama size</div><div class="t2">Smaller = harder to tap</div></div>
+        <div class="stepper"><button onclick="step(this,-1)">−</button><span class="val" data-u="pt" data-v="58" data-s="4">58pt</span><button onclick="step(this,1)">＋</button></div></div>
+    </div>
+  </div>
+
+  <!-- asset inbox -->
+  <div class="sheet" id="sheet-assets">
+    <div class="grab"></div>
+    <div class="sheet-head"><div class="st">New from this build</div><button class="xbtn sx" onclick="closeSheets()">✕</button></div>
+    <div class="sheet-body">
+      <div class="qa-eyebrow">Images · 2</div>
+      <div class="asset-grid">
+        <div class="acard"><div class="thumb t1">🦙</div><div class="am"><div class="an">Llama · hero sprite</div><div class="as">Hand-drawn, 3 frames</div></div>
+          <div class="ab"><button class="btn btn-ghost" onclick="toast('Queued: redraw llama · ~20s, art only')">Redraw</button><button class="btn btn-ghost" onclick="toast('Pick a photo to replace it')">Swap</button></div></div>
+        <div class="acard"><div class="thumb t2">⛅</div><div class="am"><div class="an">Meadow · backdrop</div><div class="as">Sky, grass, 3 clouds</div></div>
+          <div class="ab"><button class="btn btn-ghost" onclick="toast('Queued: new backdrop · ~20s, art only')">Redraw</button><button class="btn btn-ghost" onclick="toast('Pick a photo to replace it')">Swap</button></div></div>
+      </div>
+      <div class="qa-eyebrow">Music · 1</div>
+      <div class="mrow"><button class="play" onclick="this.textContent=this.textContent==='▶'?'❚❚':'▶'">▶</button>
+        <div class="mk"><div class="m1">Sunny chiptune loop</div><div class="m2">0:24 · fades on game over</div></div>
+        <button class="btn btn-ghost" style="padding:9px 14px;font-size:12.5px" onclick="toast('Queued: new track · ~30s, music only')">Replace</button></div>
+      <div class="qnote">Swapping an asset never rebuilds the game — <b>content edits are cheap.</b></div>
+    </div>
+  </div>
+
+  <!-- playtest MODAL -->
+  <div class="modal" id="modal-qa">
+    <div class="modal-card">
+    <div class="sheet-head"><div class="st" id="qa-title">Playtest before it ships</div><button class="xbtn sx" onclick="closeSheets()">✕</button></div>
+    <div class="modal-body">
+      <div class="pt-running" id="pt-running">
+        <div class="spark">✦</div>
+        <div class="pt-run-t">An agent is playing your game right now</div>
+        <div class="pt-run-s" id="pt-counter">Run 1 of 24 · checking every way to win, lose and escape</div>
+        <div class="pt-mini"><i id="pt-mini-i"></i></div>
+      </div>
+      <div class="pt-results" id="pt-results">
+        <div class="qa-score">
+          <div class="ring"><b>84</b></div>
+          <div>
+            <div class="qs-t">Played end-to-end · 24 runs</div>
+            <div class="qs-s">Suggestions, not gates — you can ship as-is anytime.</div>
+          </div>
+        </div>
+        <div class="qa-eyebrow">Playtest</div>
+        <div class="qa-item ok"><span class="qi">✓</span><div class="qb"><div class="q1">Llama is always catchable</div><div class="q2">Even at max speed, no run produced an impossible tap.</div></div></div>
+        <div class="qa-item ok"><span class="qi">✓</span><div class="qb"><div class="q1">No stuck states</div><div class="q2">Escapes, restarts and backgrounding all recover cleanly.</div></div></div>
+        <div class="qa-item warn"><span class="qi">!</span><div class="qb"><div class="q1">Tap target shrinks below 44pt</div><div class="q2">After ~40 taps the llama gets too small for thumbs.</div></div><button class="fix" onclick="toast('Queued: clamp llama size at 44pt')">Fix it</button></div>
+        <div class="qa-eyebrow">Feed readiness</div>
+        <div class="qa-item ok"><span class="qi">✓</span><div class="qb"><div class="q1">Average run: 52 seconds</div><div class="q2">Right in the sweet spot for shares.</div></div></div>
+        <div class="qa-item warn"><span class="qi">!</span><div class="qb"><div class="q1">First 3 seconds are static</div><div class="q2">Feed viewers decide fast — auto-start the llama on load.</div></div><button class="fix" onclick="toast('Queued: auto-start on load')">Fix it</button></div>
+      </div>
+    </div>
+    <div class="modal-foot" id="qa-foot" style="display:none">
+      <button class="btn btn-ghost" onclick="publish()">Ship as-is</button>
+      <button class="btn btn-white" onclick="toast('Applying 2 fixes · ~40s, then shipping'); closeSheets()">Fix, then ship</button>
+    </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span class="ti">✓</span><span id="toast-t">Done</span></div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ---------- state ---------- */
+let mode = 'agent';
+let effort = 'deep';            // deep -> plan first; quick -> straight to build
+let built = false, building = false, version = 1, checked = false, planReady = false;
+let llamaTimer = null, buildTimers = [];
+const $ = id => document.getElementById(id);
+
+/* ---------- routing ---------- */
+function go(name){
+  ['create','canvas'].forEach(s=>$('s-'+s).classList.toggle('on', s===name));
+  railSync(name==='canvas' ? (built?'canvas':(planReady?'plan':'build')) : name);
+}
+function railSync(key){
+  document.querySelectorAll('#rail li').forEach(li=>li.classList.toggle('on', li.dataset.go===key));
+}
+document.querySelectorAll('#rail li').forEach(li=>{
+  li.addEventListener('click', ()=>{
+    const k = li.dataset.go;
+    if(k==='create'){ go('create'); }
+    if(k==='plan'){ if(effort!=='deep') setEffort('deep'); submitIdea(); }
+    if(k==='build'){ startBuild(true); }
+    if(k==='canvas'){ skipToBuilt(); go('canvas'); openChat(); }
+    if(k==='qa'){ skipToBuilt(); go('canvas'); openQA(); }
+  });
+});
+
+/* ---------- effort (in-composer chip) ---------- */
+function setEffort(val){
+  effort = val;
+  $('effort-ico').textContent = val==='deep' ? '🌀' : '⚡';
+  $('effort-name').textContent = val==='deep' ? 'Deep' : 'Quick';
+  $('effort-sub').textContent = val==='deep' ? '~4 min' : '~1 min';
+  $('effort-hint').innerHTML = val==='deep'
+    ? '<b>Deep</b> plans first, then builds richer (~4 min). <b>Quick</b> just builds (~1 min).'
+    : '<b>Quick</b> just builds (~1 min), no plan step. <b>Deep</b> thinks first.';
+}
+function cycleEffort(e){ e.stopPropagation(); setEffort(effort==='deep' ? 'quick' : 'deep'); }
+
+/* ---------- powers (toolbox -> prompt attachments) ---------- */
+const powerMeta = {sfx:'🔊 Arcade SFX', timer:'⏱ Timer rounds', board:'🏆 Leaderboard', friends:'🫂 Play with friends', music:'🎵 Music'};
+function togglePower(btn){
+  const p = btn.dataset.p;
+  const on = btn.classList.contains('btn-teal');
+  if(on){
+    btn.classList.remove('btn-teal'); btn.classList.add('btn-ghost'); btn.textContent='Add';
+    const chip = document.querySelector(`.achip[data-p="${p}"]`); if(chip) chip.remove();
+  } else {
+    btn.classList.remove('btn-ghost'); btn.classList.add('btn-teal'); btn.textContent='Added ✓';
+    const s = document.createElement('span');
+    s.className='achip'; s.dataset.p=p;
+    s.innerHTML = `${powerMeta[p]} <span class="x" onclick="removePower(event,'${p}')">✕</span>`;
+    $('achips').appendChild(s);
+  }
+  refreshPlus();
+}
+function refreshPlus(){
+  const n = document.querySelectorAll('.achip').length;
+  $('pcount').textContent = n;
+  $('powbtn').querySelector('.pb').style.display = n>0 ? 'flex' : 'none';
+}
+function ideasOn(){ $('ideasband').classList.add('on'); }
+function ideasOff(){ setTimeout(()=>$('ideasband').classList.remove('on'), 120); }
+function addIdea(e, btn){
+  e.preventDefault();
+  const t = btn.textContent.replace(/^\u2026\s*/, '');
+  const ta = $('idea');
+  ta.value = ta.value.replace(/[.\s]+$/,'') + ', ' + t + '.';
+  ta.focus();
+}
+function openAttach(){ openSheet('sheet-attach'); }
+function openPowers(){ openSheet('sheet-powers'); }
+function removePower(e,p){
+  e.preventDefault(); e.stopPropagation();
+  const chip = document.querySelector(`.achip[data-p="${p}"]`); if(chip) chip.remove();
+  const btn = document.querySelector(`#sheet-powers [data-p="${p}"]`);
+  if(btn){ btn.classList.remove('btn-teal'); btn.classList.add('btn-ghost'); btn.textContent='Add'; }
+  refreshPlus();
+}
+
+/* ---------- submit: quick skips the plan ---------- */
+function submitIdea(){
+  if(effort==='deep'){
+    planReady = true; built = false; building = false;
+    clearBuild();
+    go('canvas');
+    $('buildlay').classList.remove('off');
+    $('buildcap').textContent = 'Plan ready — confirm it below';
+    $('shipbtn').disabled = true;
+    $('dock').classList.add('solo');
+    $('pill').classList.remove('compact');
+    $('pill-t1').textContent = 'Plan ready in 4 seconds';
+    $('pill-t2').textContent = 'Nothing built yet — tap to review';
+    $('chatlog').innerHTML = '';
+    addMsg(escapeHTML($('idea').value), 'user');
+    addMsg(specCardHTML(), 'ai');
+    setTimeout(openChat, 350);
+  } else {
+    startBuild(false);
+    toast('Quick build — no plan step, ~1 min');
+  }
+}
+
+function specCardHTML(){
+  return `Here’s the plan for <b>Llama Panic!</b> — took 4 seconds, nothing is built yet. Tap any line to change it before I spend the minutes.
+  <div class="plan-mini">
+    <div class="spec-row" onclick="cycle(this,['Tap the llama before it reaches the edge','Drag a fence to block the llama','Tap rhythm — llama moves on the beat'])"><span class="k">Core loop</span><span class="v">Tap the llama before it reaches the edge</span><span class="chev">›</span></div>
+    <div class="spec-row" onclick="cycle(this,['Speeds up every 5 taps','Fixed speed, shrinking llama','Random teleports after 20 taps'])"><span class="k">Chaos curve</span><span class="v">Speeds up every 5 taps</span><span class="chev">›</span></div>
+    <div class="spec-row" onclick="cycle(this,['Endless — escape ends the run','3 lives','60-second rounds'])"><span class="k">Run ends</span><span class="v">Endless — escape ends the run</span><span class="chev">›</span></div>
+    <div class="spec-row" onclick="cycle(this,['Sunny meadow, hand-drawn','Neon synthwave desert','Office carpet, security-cam style'])"><span class="k">Style</span><span class="v">Sunny meadow, hand-drawn</span><span class="chev">›</span></div>
+    <div class="spec-row" onclick="cycle(this,['Best-streak score + share card','Score only','Global leaderboard'])"><span class="k">Scoring</span><span class="v">Best-streak score + share card</span><span class="chev">›</span></div>
+    <div class="spec-excl"><b>Won’t include:</b> sign-in, ads, in-game chat. <b>Powers:</b> Arcade SFX.</div>
+    <div class="pm-foot">
+      <button class="btn btn-white" onclick="startBuildFromCard(this)">Start build · ~4 min</button>
+      <button class="btn btn-ghost" onclick="addMsg('Take your time — the plan stays right here. Edit any line, or just tell me what feels off.','ai')">Not yet</button>
+    </div>
+  </div>`;
+}
+
+function startBuildFromCard(btn){
+  btn.closest('.pm-foot').innerHTML = '<div class="chat-note" style="flex:1">Locked in — starting the build. Cancel anytime, nothing is lost.</div>';
+  setTimeout(()=>{ closeSheets(); startBuild(true); }, 600);
+}
+
+/* ---------- spec card ---------- */
+function cycle(row, opts){
+  const v = row.querySelector('.v');
+  const i = opts.indexOf(v.textContent);
+  v.textContent = opts[(i+1) % opts.length];
+  v.style.color = 'var(--teal)';
+  setTimeout(()=>v.style.color='', 600);
+}
+
+/* ---------- build ---------- */
+const deepStages = [
+  {label:'Wiring game logic & physics…', cap:'Wiring the chaos…'},
+  {label:'Locking tuning values…',        cap:'Deciding how fast a llama should be…'},
+  {label:'Drawing the llama…',            cap:'Drawing one very dramatic llama…'},
+  {label:'Painting meadow & sky…',        cap:'Painting the meadow…'},
+  {label:'Layering arcade SFX…',          cap:'Recording boops and fail-trombones…'},
+];
+const quickStages = [
+  {label:'Wiring game logic…', cap:'Wiring the chaos…'},
+  {label:'Quick art pass…',    cap:'Sketching the llama…'},
+  {label:'Final touches…',     cap:'Final touches…'},
+];
+
+function startBuild(deep){
+  clearBuild();
+  planReady = false;
+  go('canvas');
+  built=false; building=true; checked=false;
+  $('buildlay').classList.remove('off');
+  $('shipbtn').disabled = true; $('shipbtn').classList.remove('checked');
+  const stages = deep ? deepStages : quickStages;
+  // stage rows only meaningful for deep; hide extras on quick
+  document.querySelectorAll('#pill-stages .stage').forEach((el,j)=>{
+    el.style.display = (deep || j<3) ? '' : 'none';
+    el.classList.remove('done','now');
+    el.querySelector('.si').textContent = j+1;
+  });
+  $('dock').classList.add('solo');
+  const pill = $('pill');
+  pill.classList.remove('compact');
+  pill.classList.add('building','expanded');
+  $('pill-ico').classList.add('spin');
+  $('pill-chev').style.display='';
+  $('pill-act').style.display='none';
+
+  const per = deep ? 2100 : 1500;
+  stages.forEach((st,i)=>{
+    buildTimers.push(setTimeout(()=>{
+      document.querySelectorAll('#pill-stages .stage').forEach((el,j)=>{
+        el.classList.toggle('done', j<i);
+        el.classList.toggle('now', j===i);
+        el.querySelector('.si').textContent = j<i ? '✓' : (j+1);
+      });
+      $('pill-t1').textContent = st.label;
+      $('pill-t2').innerHTML = `Step ${i+1} of ${stages.length} · <b>cancel anytime</b> — nothing is lost`;
+      $('buildcap').textContent = st.cap;
+      const pct = Math.round(i/stages.length*100);
+      $('pill-bar-i').style.width = pct+'%';
+      $('pill-pct').textContent = pct+'%';
+      // deep: tuning values reviewable once stage 2 completes
+      if(deep && i===2){
+        document.querySelector('.stage[data-i="1"] .review').style.display='';
+        $('pill-t2').innerHTML = `<b>Tuning values ready</b> — adjust them while I paint`;
+        $('pill-act').style.display='';
+      }
+    }, i*per));
+  });
+  buildTimers.push(setTimeout(finishBuild, stages.length*per));
+}
+
+function clearBuild(){ buildTimers.forEach(clearTimeout); buildTimers=[]; }
+
+function finishBuild(){
+  building=false; built=true;
+  document.querySelectorAll('#pill-stages .stage').forEach(el=>{
+    el.classList.add('done'); el.classList.remove('now'); el.querySelector('.si').textContent='✓';
+  });
+  $('pill-bar-i').style.width='100%'; $('pill-pct').textContent='100%';
+  setTimeout(()=>{
+    $('pill').classList.remove('building','expanded');
+    $('pill-ico').classList.remove('spin');
+    $('pill-t2').textContent='Tap to talk, or just play';
+    $('pill-act').style.display='none';
+    $('pill-chev').style.display='none';
+    $('buildlay').classList.add('off');
+    $('shipbtn').disabled=false;
+    $('gver').textContent='v'+version;
+    $('pill').classList.add('compact');
+    $('pill-t1').textContent='Edit with AI';
+    $('dock').classList.remove('solo');
+    setBadges(true);
+    railSync('canvas');
+    startLlama();
+    $('suggestrow').style.display='flex';
+    addMsg('Llama Panic! is live on v'+version+'. Tell me what to change — small tweaks apply instantly, bigger ones come back as a plan first.','ai');
+    toast('Built · saved as v'+version);
+  }, 650);
+}
+
+function skipToBuilt(){
+  clearBuild();
+  if(built) return;
+  built=true; building=false;
+  $('buildlay').classList.add('off');
+  $('shipbtn').disabled=false;
+  $('pill').classList.remove('building','expanded');
+  $('pill').classList.add('compact');
+  $('pill-ico').classList.remove('spin');
+  $('pill-t1').textContent='Edit with AI';
+  $('pill-t2').textContent='Tap to talk, or just play';
+  $('dock').classList.remove('solo');
+  setBadges(true);
+  $('pill-act').style.display='none';
+  $('pill-chev').style.display='none';
+  $('suggestrow').style.display='flex';
+  if(!$('chatlog').children.length){
+    addMsg('Llama Panic! is live on v'+version+'. Tell me what to change — small tweaks apply instantly, bigger ones come back as a plan first.','ai');
+  }
+  startLlama();
+}
+
+/* ---------- pill ---------- */
+function pillTap(e){
+  if(building){ $('pill').classList.toggle('expanded'); }
+  else if(built || planReady){ openChat(); }
+  else { $('pill').classList.toggle('expanded'); }
+}
+
+/* ---------- llama game ---------- */
+let taps=0, streak=0, best=0, speed=900;
+function startLlama(){
+  if(llamaTimer) return;
+  const l = $('llama');
+  l.onpointerdown = (ev)=>{
+    ev.stopPropagation();
+    taps++; streak++; best=Math.max(best,streak);
+    $('hud-score').textContent='Taps · '+taps;
+    $('hud-best').textContent='Best streak · '+best;
+    fx(ev);
+    hop();
+  };
+  llamaTimer = setInterval(hop, speed+400);
+  hop();
+}
+function hop(){
+  const card = $('gamecard'), l = $('llama');
+  const W = card.clientWidth-70, H = card.clientHeight-90;
+  l.style.left = Math.max(6, Math.random()*W)+'px';
+  l.style.top  = Math.max(48, 40+Math.random()*H*0.8)+'px';
+  l.style.transform = 'scaleX('+(Math.random()>.5?1:-1)+')';
+}
+function fx(ev){
+  const card = $('gamecard');
+  const r = card.getBoundingClientRect();
+  const d = document.createElement('div');
+  d.className='tap-fx'; d.textContent='+1';
+  d.style.left=(ev.clientX-r.left)+'px'; d.style.top=(ev.clientY-r.top-20)+'px';
+  card.appendChild(d); setTimeout(()=>d.remove(), 700);
+}
+
+/* ---------- sheets ---------- */
+function openSheet(id){ closeSheets(true); $('scrim').classList.add('on'); $(id).classList.add('on'); }
+function closeSheets(keep){ document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on')); $('modal-qa').classList.remove('on'); if(!keep) $('scrim').classList.remove('on'); }
+function openChat(){ openSheet('sheet-chat'); }
+function openTune(e){ if(e) e.stopPropagation(); openSheet('sheet-tune'); }
+
+/* ---------- tune steppers ---------- */
+function step(btn, dir){
+  const val = btn.parentElement.querySelector('.val');
+  let v = parseFloat(val.dataset.v);
+  const s = parseFloat(val.dataset.s || 1);
+  const u = val.dataset.u;
+  v = Math.round((v + dir*s)*10)/10;
+  if(v < s) v = s;
+  val.dataset.v = v;
+  val.textContent = u==='x' ? v+'\u00d7' : v+u;
+  val.style.color='var(--teal)'; setTimeout(()=>val.style.color='',500);
+}
+
+/* ---------- chat ---------- */
+function setMode(btn,m){
+  mode=m;
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  $('modetip').innerHTML = m==='agent'
+    ? '<b>Agent:</b> clear instructions get applied — no extra button to press.'
+    : '<b>Chat:</b> just talking. Nothing gets built from here.';
+  $('chatinput').placeholder = m==='agent' ? 'Tell Sekai what to change…' : 'Think out loud with Sekai…';
+}
+function addMsg(html, who){
+  const d=document.createElement('div');
+  d.className='msg '+who;
+  d.innerHTML = who==='ai' ? '<div class="who"><span class="av">✦</span> Sekai</div>'+html : html;
+  $('chatlog').appendChild(d);
+  $('chatlog-wrap').scrollTop = $('chatlog-wrap').scrollHeight;
+}
+function planCardHTML(){
+  return `Here’s exactly what that touches — confirm and I’ll apply it:
+  <div class="plan-mini">
+    <div class="pm-sec"><div class="pm-k ch">Will change</div>
+      <div class="pm-i">30-second round timer (Timer rounds power)</div>
+      <div class="pm-i">Llama speed ramps every 5 taps</div>
+    </div>
+    <div class="pm-sec"><div class="pm-k no">Won’t touch</div>
+      <div class="pm-i keep">Llama art, controls, escape zones</div>
+      <div class="pm-i keep">Scoring & share card</div>
+    </div>
+    <div class="pm-foot">
+      <button class="btn btn-teal" onclick="applyChange(this)">Apply · ~40s</button>
+      <button class="btn btn-ghost" onclick="queueChange(this)">Queue for later</button>
+    </div>
+  </div>`;
+}
+function sendEdit(){
+  addMsg('Add a 30s timer and make it speed up every 5 taps','user');
+  setTimeout(()=>{
+    if(mode==='agent'){ addMsg(planCardHTML(),'ai'); }
+    else { addMsg('That would turn it from endless chaos into rounds — big vibe shift, in a good way. Flip me to <b>Agent</b> and say the word; I’ll draft the exact change first.','ai'); }
+  },650);
+}
+function sendChatMsg(){
+  addMsg('What if there were two llamas?','user');
+  setTimeout(()=>{
+    addMsg('Twice the panic — you’d need split attention, maybe one llama is a decoy that loses points. This is just talk: nothing changes until you ask me to build it.','ai');
+  },650);
+}
+function sendFree(){
+  const v=$('chatinput').value.trim(); if(!v) return;
+  $('chatinput').value='';
+  addMsg(escapeHTML(v),'user');
+  setTimeout(()=>{
+    if(mode==='agent'){ addMsg(planCardHTML(),'ai'); }
+    else { addMsg('Noted — happy to keep exploring. Flip me to <b>Agent</b> when you want it built.','ai'); }
+  },650);
+}
+function escapeHTML(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function applyChange(btn){
+  const foot=btn.closest('.pm-foot');
+  foot.innerHTML='<div class="chat-note" style="flex:1">Applying… rebuilding round logic only — art untouched</div>';
+  setTimeout(()=>{
+    closeSheets();
+    version++;
+    $('gver').textContent='v'+version;
+    $('pill-t1').textContent='Edit with AI';
+    $('clver').textContent='v'+version;
+    $('hud-timer').style.display='';
+    checked=false; $('shipbtn').classList.remove('checked');
+    $('changelog').classList.add('on');
+    setTimeout(()=>$('changelog').classList.remove('on'),7000);
+  },1500);
+}
+function queueChange(btn){
+  btn.closest('.pm-foot').innerHTML='<div class="chat-note" style="flex:1">Queued · 1 pending change — applies with your next build</div>';
+  toast('1 change queued');
+}
+function hideChangelog(){ $('changelog').classList.remove('on'); }
+
+/* ---------- playtest / ship ---------- */
+let ptTimer=null;
+function openQA(){
+  $('scrim').classList.remove('on');
+  $('modal-qa').classList.add('on');
+  railSync('qa');
+  if(checked){ showResults(true); return; }
+  $('pt-running').style.display='flex';
+  $('pt-results').style.display='none';
+  $('qa-foot').style.display='none';
+  $('qa-title').textContent='Playtest before it ships';
+  let run=1;
+  clearInterval(ptTimer);
+  ptTimer=setInterval(()=>{
+    run+=Math.ceil(Math.random()*4);
+    if(run>=24){ run=24; clearInterval(ptTimer); setTimeout(()=>showResults(false),350); }
+    $('pt-counter').textContent=`Run ${run} of 24 · checking every way to win, lose and escape`;
+    $('pt-mini-i').style.width=(run/24*100)+'%';
+  },260);
+}
+function showResults(instant){
+  checked=true;
+  $('shipbtn').classList.add('checked');
+  $('pt-running').style.display='none';
+  $('pt-results').style.display='flex';
+  $('qa-foot').style.display='flex';
+  $('qa-title').textContent='Playtest report · v'+version;
+  const items=document.querySelectorAll('.qa-item');
+  items.forEach((el,i)=>{
+    el.classList.remove('in');
+    setTimeout(()=>el.classList.add('in'), instant?0:120*i);
+  });
+}
+function setBadges(on){
+  ['dimg','dmus','cimg','cmus'].forEach(id=>{ const el=$(id); if(el) el.classList.toggle('has', on); });
+}
+function openAssets(){
+  openSheet('sheet-assets');
+  setBadges(false);
+}
+function bugReport(){
+  openChat();
+  const agentBtn = document.querySelector('#modeseg button');
+  setMode(agentBtn, 'agent');
+  const inp = $('chatinput');
+  inp.value = 'Bug: the llama got stuck on the left edge after ~30 taps';
+  inp.focus();
+  toast('Bug report opens as an Agent message — screenshot attached');
+}
+
+let toastTimer=null;
+function toast(t){
+  $('toast-t').textContent = t;
+  $('toast').classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>$('toast').classList.remove('on'), 2600);
+}
+
+function publish(){
+  closeSheets();
+  toast('Shipped to the feed · v'+version);
+  $('shipbtn').textContent='✓';
+  $('shipbtn').style.background='var(--ok)';
+}
+
+</script>
+</body>
+</html>
